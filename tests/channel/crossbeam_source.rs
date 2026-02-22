@@ -1,5 +1,5 @@
 use fsdr_blocks::channel::CrossbeamSource;
-use futuresdr::blocks::{Head, VectorSink, VectorSinkBuilder};
+use futuresdr::blocks::{Head, VectorSink};
 use futuresdr::macros::connect;
 use futuresdr::runtime::Result;
 use futuresdr::runtime::{Flowgraph, Runtime};
@@ -12,7 +12,7 @@ fn crossbeam_source_u32() -> Result<()> {
 
     let crossbeam_source = CrossbeamSource::<u32>::new(rx);
     let limit = Head::<u32>::new(orig.len() as u64);
-    let vector_sink = VectorSinkBuilder::<u32>::new().build();
+    let vector_sink = VectorSink::<u32>::new(1024);
 
     connect!(fg,
         crossbeam_source > limit > vector_sink;
@@ -22,7 +22,7 @@ fn crossbeam_source_u32() -> Result<()> {
 
     fg = Runtime::new().run(fg)?;
 
-    let snk = fg.kernel::<VectorSink<u32>>(vector_sink).unwrap();
+    let snk = vector_sink.get()?;
     let received = snk.items();
 
     // debug!("{}", received.len());

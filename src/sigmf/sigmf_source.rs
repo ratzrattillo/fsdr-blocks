@@ -3,23 +3,13 @@ use std::path::PathBuf;
 
 use futuresdr::futures::AsyncRead;
 use futuresdr::futures::AsyncReadExt;
-use futuresdr::runtime::BlockMeta;
-use futuresdr::runtime::BlockMetaBuilder;
-use futuresdr::runtime::Kernel;
-use futuresdr::runtime::MessageIo;
-use futuresdr::runtime::MessageIoBuilder;
-use futuresdr::runtime::Result;
-use futuresdr::runtime::StreamIo;
-use futuresdr::runtime::StreamIoBuilder;
-use futuresdr::runtime::WorkIo;
-use futuresdr::runtime::{Block, Tag};
+use futuresdr::prelude::*;
 
 use sigmf::RecordingBuilder;
 use sigmf::{Annotation, Description};
 
-use crate::serde_pmt;
-
 use super::BytesConveter;
+use crate::serde_pmt;
 
 /// Read samples from a SigMF file.
 ///
@@ -44,113 +34,112 @@ use super::BytesConveter;
 /// let source = builder.build::<u16>();
 /// ```
 #[cfg_attr(docsrs, doc(cfg(not(target_arch = "wasm32"))))]
-pub struct SigMFSource<T, R, F>
-where
-    T: Send + 'static + Sized,
-    R: AsyncRead,
+#[derive(Block)]
+pub struct SigMFSource<
+    T: Send + Sync + Default + Clone + std::fmt::Debug + 'static,
+    R: AsyncRead + Send + Sync + Unpin + 'static,
     F: FnMut(&[u8]) -> T + Send + 'static,
-{
+    O: CpuBufferWriter<Item = T> = DefaultCpuWriter<T>,
+> {
+    #[output]
+    output: O,
     reader: R,
     annotations: Vec<Annotation>,
     // captures: Vec<Capture>,
     // global_index: usize,
     sample_index: usize,
-    _sample_type: std::marker::PhantomData<T>,
-    _reader_type: std::marker::PhantomData<R>,
     converter: F,
     item_size: usize,
 }
 
-impl<T, R, F> SigMFSource<T, R, F>
+impl<T, R, F, O> SigMFSource<T, R, F, O>
 where
-    T: Send + 'static + Sized + std::marker::Sync,
-    R: AsyncRead + std::marker::Sync + std::marker::Send + std::marker::Unpin + 'static,
+    T: Send + Sync + Default + Clone + std::fmt::Debug + 'static,
+    R: AsyncRead + Send + Sync + Unpin + 'static,
     F: FnMut(&[u8]) -> T + Send + 'static,
+    O: CpuBufferWriter<Item = T>,
 {
     /// Create FileSource block
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(reader: R, desc: Description, converter: F) -> Result<Block> {
+    pub fn new(reader: R, desc: Description, converter: F) -> Result<Self> {
         let global = desc.global()?;
         let datatype = *global.datatype()?;
         let annotations = desc.annotations.unwrap_or_default();
         // let captures = desc.captures.unwrap_or_default();
-        Ok(Block::new(
-            BlockMetaBuilder::new("SigMFFileSource").build(),
-            StreamIoBuilder::new().add_output::<T>("out").build(),
-            MessageIoBuilder::new().build(),
-            SigMFSource::<T, R, F> {
-                reader,
-                annotations,
-                // captures,
-                // global_index: 0,
-                sample_index: 0,
-                _sample_type: std::marker::PhantomData,
-                _reader_type: std::marker::PhantomData,
-                converter,
-                item_size: datatype.size(),
-            },
-        ))
+        Ok(SigMFSource {
+            output: O::default(),
+            reader,
+            annotations,
+            sample_index: 0,
+            converter,
+            item_size: datatype.size(),
+        })
     }
 }
 
 #[doc(hidden)]
-#[async_trait]
-impl<T, R, F> Kernel for SigMFSource<T, R, F>
+impl<T, R, F, O> Kernel for SigMFSource<T, R, F, O>
 where
-    T: Send + 'static + Sized + std::marker::Sync,
-    R: AsyncRead + std::marker::Send + std::marker::Sync + std::marker::Unpin,
+    T: Send + Sync + Default + Clone + std::fmt::Debug + 'static,
+    R: AsyncRead + Send + Sync + Unpin + 'static,
     F: FnMut(&[u8]) -> T + Send + 'static,
+    O: CpuBufferWriter<Item = T>,
 {
     async fn work(
         &mut self,
         io: &mut WorkIo,
-        sio: &mut StreamIo,
-        _mio: &mut MessageIo<Self>,
+        _mio: &mut MessageOutputs,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        let o = sio.output(0).slice::<T>();
+        let n_read_items = {
+            let o = self.output.slice();
 
-        let mut out = [0u8; 2048];
-        let mut i = 0;
-        // let max_produce = o.len();
-        // while i < max_produce {
-        match self.reader.read(&mut out[i..]).await {
-            Ok(0) => {
-                io.finished = true;
-                // break;
-            }
-            Ok(written) => {
-                for (v, r) in out.chunks_exact(self.item_size).zip(o) {
-                    *r = (self.converter)(v);
+            let mut buf = vec![0u8; o.len() * self.item_size];
+            let mut n_read_items = 0;
+            // let max_produce = o.len();
+            // while i < max_produce {
+            match self.reader.read(&mut buf).await {
+                Ok(0) => {
+                    io.finished = true;
+                    // break;
                 }
-                i += written / self.item_size;
+                Ok(n_read_bytes) => {
+                    n_read_items = n_read_bytes / self.item_size;
+                    for (v, r) in buf.chunks_exact(self.item_size).zip(o.iter_mut()) {
+                        *r = (self.converter)(v);
+                    }
+                }
+                Err(e) => panic!("SigMFSource: Error reading data: {e:?}"),
             }
-            Err(e) => panic!("SigMFSource: Error reading data: {e:?}"),
-        }
-        // }
+            // }
 
-        while let Some(annot) = self.annotations.first() {
-            if let Some(annot_sample_start) = annot.sample_start {
-                let upper_sample_index = self.sample_index + i;
-                if (self.sample_index..upper_sample_index).contains(&annot_sample_start) {
-                    let tag = serde_pmt::to_pmt(annot)?;
-                    let tag = Tag::Data(tag);
-                    sio.output(0)
-                        .add_tag(annot_sample_start - self.sample_index, tag);
+            while let Some(annot) = self.annotations.first() {
+                if let Some(annot_sample_start) = annot.sample_start {
+                    let upper_sample_index = self.sample_index + n_read_items;
+                    if (self.sample_index..upper_sample_index).contains(&annot_sample_start) {
+                        let tag = serde_pmt::to_pmt(annot)?;
+                        let tag = Tag::Data(tag);
+                        self.output
+                            .slice_with_tags()
+                            .1
+                            .add_tag(annot_sample_start - self.sample_index, tag);
 
-                    self.annotations.remove(0);
+                        self.annotations.remove(0);
+                    } else {
+                        break;
+                    }
                 } else {
-                    break;
+                    // Skip all annotations without sample_start
+                    self.annotations.remove(0);
                 }
-            } else {
-                // Skip all annotations without sample_start
-                self.annotations.remove(0);
             }
-        }
+            n_read_items
+        };
 
-        // println!("written: {:?}", i);
-        sio.output(0).produce(i);
-        self.sample_index += i;
+        // println!("written: {:?}", n_read_items);
+        if n_read_items > 0 {
+            self.output.produce(n_read_items);
+            self.sample_index += n_read_items;
+        }
 
         Ok(())
     }
@@ -222,7 +211,9 @@ impl SigMFSourceBuilder {
         SigMFSourceBuilderFromReader { data: reader, desc }
     }
 
-    pub async fn build<T: Sized + 'static + Send + Sync>(&mut self) -> Result<Block>
+    pub async fn build<T: Send + Sync + Default + Clone + std::fmt::Debug + 'static>(
+        &mut self,
+    ) -> Result<SigMFSource<T, async_fs::File, impl FnMut(&[u8]) -> T + Send + 'static>>
     where
         sigmf::DatasetFormat: BytesConveter<T>,
     {
@@ -237,9 +228,11 @@ impl SigMFSourceBuilder {
 
 impl<R> SigMFSourceBuilderFromReader<R>
 where
-    R: AsyncRead + std::marker::Send + std::marker::Sync + std::marker::Unpin + 'static,
+    R: AsyncRead + Send + Sync + Unpin + 'static,
 {
-    pub async fn build<T: Sized + 'static + Send + Sync>(self) -> Result<Block>
+    pub async fn build<T: Send + Sync + Default + Clone + std::fmt::Debug + 'static>(
+        self,
+    ) -> Result<SigMFSource<T, R, impl FnMut(&[u8]) -> T + Send + 'static>>
     where
         sigmf::DatasetFormat: BytesConveter<T>,
     {

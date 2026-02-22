@@ -3,9 +3,6 @@
 
 // #![feature(async_fn_in_trait)]
 
-#[macro_use]
-pub extern crate async_trait;
-
 #[cfg(feature = "crossbeam")]
 pub mod channel;
 

@@ -25,7 +25,7 @@ impl PmtDist {
     }
 
     #[cold]
-    fn unexpected(&self) -> Unexpected {
+    fn unexpected(&self) -> Unexpected<'_> {
         match &self.0 {
             Pmt::Null => Unexpected::Unit,
             Pmt::Bool(b) => Unexpected::Bool(*b),

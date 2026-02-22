@@ -1,7 +1,6 @@
 use fsdr_blocks::sigmf::BytesConveter;
 use fsdr_blocks::sigmf::SigMFSourceBuilder;
 use futuresdr::blocks::VectorSink;
-use futuresdr::blocks::VectorSinkBuilder;
 use futuresdr::futures::io::BufReader;
 use futuresdr::futures::io::Cursor;
 use futuresdr::macros::connect;
@@ -19,6 +18,7 @@ where
         + std::marker::Sync
         + std::marker::Copy
         + std::fmt::Debug
+        + std::default::Default
         + 'static,
     DatasetFormat: BytesConveter<T>,
 {
@@ -30,7 +30,7 @@ where
     let src = futuresdr::futures::executor::block_on(
         SigMFSourceBuilder::with_data_and_description(actual_file, desc).build::<T>(),
     )?;
-    let snk = VectorSinkBuilder::<T>::new().build();
+    let snk = VectorSink::<T>::new(1024);
 
     connect!(fg,
         src > snk;
@@ -38,7 +38,7 @@ where
 
     fg = Runtime::new().run(fg)?;
 
-    let snk = fg.kernel::<VectorSink<T>>(snk).unwrap();
+    let snk = snk.get()?;
     Ok(snk.items().clone())
 }
 

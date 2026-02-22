@@ -3,14 +3,15 @@
 use core::marker::PhantomData;
 use futuresdr::blocks::Sink;
 use futuresdr::num_complex::Complex32;
-use futuresdr::runtime::Block;
 use std::io::Write;
 
+#[derive(Clone, Copy)]
 enum StdDirection {
     In,
     Out,
 }
 
+#[derive(Clone, Copy)]
 enum BytesOrder {
     Native,
     BigEndian,
@@ -79,17 +80,14 @@ impl<A> StdInOutBuilder<A> {
 }
 
 impl StdInOutBuilder<u8> {
-    pub fn build(self) -> Block {
+    pub fn build(self) -> Sink<impl FnMut(&u8) + Send + 'static, u8> {
         match self.direction {
             StdDirection::Out => {
                 let mut stdout = std::io::stdout();
-                Sink::new(move |f: &i16| {
-                    stdout
-                        .write_all(&f.to_ne_bytes())
-                        .expect("cannot write to stdout");
+                Sink::new(move |f: &u8| {
+                    stdout.write_all(&[*f]).expect("cannot write to stdout");
                     stdout.flush().expect("flush error on stdout");
                 })
-                .into()
             }
             _ => todo!("stdin not yet implemented"),
         }
@@ -97,33 +95,25 @@ impl StdInOutBuilder<u8> {
 }
 
 impl StdInOutBuilder<i16> {
-    pub fn build(self) -> Block {
+    pub fn build(self) -> Sink<impl FnMut(&i16) + Send + 'static, i16> {
         match self.direction {
             StdDirection::Out => {
                 let mut stdout = std::io::stdout();
-                match self.bytes_order {
-                    BytesOrder::Native => Sink::new(move |f: &i16| {
-                        stdout
+                let bytes_order = self.bytes_order;
+                Sink::new(move |f: &i16| {
+                    match bytes_order {
+                        BytesOrder::Native => stdout
                             .write_all(&f.to_ne_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                    BytesOrder::LittleEndian => Sink::new(move |f: &i16| {
-                        stdout
+                            .expect("cannot write to stdout"),
+                        BytesOrder::LittleEndian => stdout
                             .write_all(&f.to_le_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                    BytesOrder::BigEndian => Sink::new(move |f: &i16| {
-                        stdout
+                            .expect("cannot write to stdout"),
+                        BytesOrder::BigEndian => stdout
                             .write_all(&f.to_be_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                }
+                            .expect("cannot write to stdout"),
+                    }
+                    stdout.flush().expect("flush error on stdout");
+                })
             }
             _ => todo!("stdin not yet implemented"),
         }
@@ -131,33 +121,25 @@ impl StdInOutBuilder<i16> {
 }
 
 impl StdInOutBuilder<f32> {
-    pub fn build(self) -> Block {
+    pub fn build(self) -> Sink<impl FnMut(&f32) + Send + 'static, f32> {
         match self.direction {
             StdDirection::Out => {
                 let mut stdout = std::io::stdout();
-                match self.bytes_order {
-                    BytesOrder::Native => Sink::new(move |f: &f32| {
-                        stdout
+                let bytes_order = self.bytes_order;
+                Sink::new(move |f: &f32| {
+                    match bytes_order {
+                        BytesOrder::Native => stdout
                             .write_all(&f.to_ne_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                    BytesOrder::LittleEndian => Sink::new(move |f: &f32| {
-                        stdout
+                            .expect("cannot write to stdout"),
+                        BytesOrder::LittleEndian => stdout
                             .write_all(&f.to_le_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                    BytesOrder::BigEndian => Sink::new(move |f: &f32| {
-                        stdout
+                            .expect("cannot write to stdout"),
+                        BytesOrder::BigEndian => stdout
                             .write_all(&f.to_be_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                }
+                            .expect("cannot write to stdout"),
+                    }
+                    stdout.flush().expect("flush error on stdout");
+                })
             }
             _ => todo!("stdin not yet implemented"),
         }
@@ -165,42 +147,40 @@ impl StdInOutBuilder<f32> {
 }
 
 impl StdInOutBuilder<Complex32> {
-    pub fn build(self) -> Block {
+    pub fn build(self) -> Sink<impl FnMut(&Complex32) + Send + 'static, Complex32> {
         match self.direction {
             StdDirection::Out => {
                 let mut stdout = std::io::stdout();
-                match self.bytes_order {
-                    BytesOrder::Native => Sink::new(move |f: &Complex32| {
-                        stdout
-                            .write_all(&f.re.to_ne_bytes())
-                            .expect("cannot write to stdout");
-                        stdout
-                            .write_all(&f.im.to_ne_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                    BytesOrder::LittleEndian => Sink::new(move |f: &Complex32| {
-                        stdout
-                            .write_all(&f.re.to_le_bytes())
-                            .expect("cannot write to stdout");
-                        stdout
-                            .write_all(&f.im.to_le_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                    BytesOrder::BigEndian => Sink::new(move |f: &Complex32| {
-                        stdout
-                            .write_all(&f.re.to_be_bytes())
-                            .expect("cannot write to stdout");
-                        stdout
-                            .write_all(&f.im.to_be_bytes())
-                            .expect("cannot write to stdout");
-                        stdout.flush().expect("flush error on stdout");
-                    })
-                    .into(),
-                }
+                let bytes_order = self.bytes_order;
+                Sink::new(move |f: &Complex32| {
+                    match bytes_order {
+                        BytesOrder::Native => {
+                            stdout
+                                .write_all(&f.re.to_ne_bytes())
+                                .expect("cannot write to stdout");
+                            stdout
+                                .write_all(&f.im.to_ne_bytes())
+                                .expect("cannot write to stdout");
+                        }
+                        BytesOrder::LittleEndian => {
+                            stdout
+                                .write_all(&f.re.to_le_bytes())
+                                .expect("cannot write to stdout");
+                            stdout
+                                .write_all(&f.im.to_le_bytes())
+                                .expect("cannot write to stdout");
+                        }
+                        BytesOrder::BigEndian => {
+                            stdout
+                                .write_all(&f.re.to_be_bytes())
+                                .expect("cannot write to stdout");
+                            stdout
+                                .write_all(&f.im.to_be_bytes())
+                                .expect("cannot write to stdout");
+                        }
+                    }
+                    stdout.flush().expect("flush error on stdout");
+                })
             }
             _ => todo!("stdin not yet implemented"),
         }

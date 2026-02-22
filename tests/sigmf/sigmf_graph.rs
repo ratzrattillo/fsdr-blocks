@@ -1,8 +1,6 @@
-use futuresdr::blocks::VectorSink;
-
 use fsdr_blocks::sigmf::{BytesConveter, SigMFSink, SigMFSourceBuilder};
 use futuresdr::{
-    blocks::{VectorSinkBuilder, VectorSource},
+    blocks::{VectorSink, VectorSource},
     macros::connect,
     runtime::Result,
     runtime::{Flowgraph, Runtime},
@@ -23,12 +21,13 @@ where
         + std::marker::Send
         + std::marker::Sync
         + std::fmt::Debug
+        + std::default::Default
         + std::cmp::PartialEq,
     DatasetFormat: BytesConveter<T>,
 {
     let mut fg = Flowgraph::new();
 
-    let src1 = VectorSource::new(data.clone());
+    let src1 = VectorSource::<T>::new(data.clone());
     let data_file_content: Vec<u8> = vec![];
     let meta_file_content: Vec<u8> = vec![];
     let data_file = std::io::Cursor::new(data_file_content);
@@ -39,9 +38,7 @@ where
         src1 > snk1;
     );
     fg = Runtime::new().run(fg)?;
-    let snk1 = fg
-        .kernel::<SigMFSink<T, std::io::Cursor<Vec<u8>>, std::io::Cursor<Vec<u8>>>>(snk1)
-        .unwrap();
+    let snk1 = snk1.get()?;
     let desc = snk1.description.build()?;
     let mut fg = Flowgraph::new();
     let data_file = snk1.writer.to_owned().into_inner();
@@ -49,15 +46,15 @@ where
     let src2 = futuresdr::futures::executor::block_on(
         SigMFSourceBuilder::with_data_and_description(data_file, desc).build::<T>(),
     )?;
-    let snk2 = VectorSinkBuilder::<T>::new().build();
+    let snk2 = VectorSink::<T>::new(1024);
     connect!(fg,
         src2 > snk2;
     );
     fg = Runtime::new().run(fg)?;
-    let snk2 = fg.kernel::<VectorSink<T>>(snk2).unwrap().items();
+    let snk2 = snk2.get()?.items().clone();
     assert_eq!(data.len(), snk2.len());
     for (o, i) in data.iter().zip(snk2) {
-        assert_eq!(*o, *i);
+        assert_eq!(o, &i);
     }
     Ok(())
 }
@@ -122,9 +119,7 @@ fn sigmf_read_write_annotation() -> Result<()> {
     fg = Runtime::new().run(fg)?;
 
     // Time to verify
-    let snk1 = fg
-        .kernel::<SigMFSink<u8, std::io::Cursor<Vec<u8>>, std::io::Cursor<Vec<u8>>>>(snk1)
-        .unwrap();
+    let snk1 = snk1.get()?;
     let tgt_desc = snk1.description.build()?;
     let annotations = tgt_desc.annotations()?;
     assert_eq!(2, annotations.len());
