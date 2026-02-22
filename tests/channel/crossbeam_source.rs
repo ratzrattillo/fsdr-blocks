@@ -20,7 +20,7 @@ fn crossbeam_source_u32() -> Result<()> {
 
     tx.try_send(orig.clone().into_boxed_slice()).unwrap();
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk = vector_sink.get()?;
     let received = snk.items();

@@ -19,7 +19,7 @@ fn convert_u8_f32() -> Result<()> {
     connect!(fg,
         src > convert_u8_f32 > vect_sink;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk = vect_sink.get()?;
     let v = snk.items();
@@ -48,7 +48,7 @@ fn convert_u8_f32() -> Result<()> {
 //     connect!(fg,
 //         src > convert_u8_f32 > vect_sink;
 //     );
-//     fg = Runtime::new().run(fg)?;
+//     Runtime::new().run(fg)?;
 
 //     let snk = vect_sink.get()?;
 //     let v = snk.items();

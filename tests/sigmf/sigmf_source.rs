@@ -36,7 +36,7 @@ where
         src > snk;
     );
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk = snk.get()?;
     Ok(snk.items().clone())

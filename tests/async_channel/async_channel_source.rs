@@ -25,7 +25,7 @@ async fn async_channel_source_u32() -> Result<()> {
     tx.send(orig.clone().into_boxed_slice()).await.unwrap();
     tx.close();
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk = vector_snk.get()?;
     let received = snk.items();

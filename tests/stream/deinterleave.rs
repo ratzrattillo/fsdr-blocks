@@ -22,7 +22,7 @@ fn deinterleave_u8() -> Result<()> {
         deinterleaver.out0 > vect_sink_0;
         deinterleaver.out1 > vect_sink_1;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk_0 = vect_sink_0.get()?;
     let snk_0 = snk_0.items();

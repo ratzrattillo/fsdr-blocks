@@ -37,7 +37,7 @@ where
     connect!(fg,
         src1 > snk1;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
     let snk1 = snk1.get()?;
     let desc = snk1.description.build()?;
     let mut fg = Flowgraph::new();
@@ -50,7 +50,7 @@ where
     connect!(fg,
         src2 > snk2;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
     let snk2 = snk2.get()?.items().clone();
     assert_eq!(data.len(), snk2.len());
     for (o, i) in data.iter().zip(snk2) {
@@ -116,7 +116,7 @@ fn sigmf_read_write_annotation() -> Result<()> {
         src1 > snk1;
     );
     // Now run the flowgraph
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     // Time to verify
     let snk1 = snk1.get()?;

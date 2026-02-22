@@ -26,7 +26,7 @@ fn test_cw_to_char_vector() -> Result<()> {
         cw_to_char > vector_snk;
     );
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk = vector_snk.get()?;
     let received: Vec<char> = snk
@@ -61,7 +61,7 @@ fn test_cw_to_char_channel() -> Result<()> {
     );
 
     let rt = Runtime::new();
-    let fg = block_on(async move {
+    let _fg = block_on(async move {
         let (fg, _) = rt.start(fg).await.unwrap();
         let c = msg_to_cw(['S'].as_slice()).into_boxed_slice();
         tx.send(c).await.unwrap();

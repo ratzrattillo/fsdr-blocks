@@ -32,7 +32,7 @@ fn test_baseband_to_cw() -> Result<()> {
         vector_src > baseband_to_cw > vector_snk;
     );
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk = vector_snk.get()?;
     let received = snk.items();

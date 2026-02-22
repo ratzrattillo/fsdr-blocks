@@ -20,7 +20,7 @@ fn freq_shift_f32() -> Result<()> {
     connect!(fg,
         src > freq_shifter > vect_sink;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk_0 = vect_sink.get()?;
     let snk_0 = snk_0.items();
@@ -68,7 +68,7 @@ fn freq_shift_c32() -> Result<()> {
     connect!(fg,
         src > freq_shifter > vect_sink;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
     let snk_0 = vect_sink.get()?;
     let snk_0 = snk_0.items();
