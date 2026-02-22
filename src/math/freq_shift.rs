@@ -1,3 +1,4 @@
+use futuresdr::blocks::signal_source::FixedPointPhase;
 use futuresdr::blocks::signal_source::NCO;
 use futuresdr::num_complex::Complex32;
 use futuresdr::prelude::*;
@@ -25,6 +26,7 @@ pub struct FrequencyShifter<
     #[output]
     output: O,
     nco: NCO,
+    phase_inc: FixedPointPhase,
 }
 
 impl<A, I, O> FrequencyShifter<A, I, O>
@@ -35,14 +37,13 @@ where
 {
     /// Create FrequencyShifter block
     pub fn new(frequency: f32, sample_rate: f32) -> Self {
-        let nco = NCO::new(
-            0.0f32,
-            2.0 * core::f32::consts::PI * frequency / sample_rate,
-        );
+        let phase_inc = 2.0 * core::f32::consts::PI * frequency / sample_rate;
+        let nco = NCO::new(0.0f32, phase_inc);
         Self {
             input: I::default(),
             output: O::default(),
             nco,
+            phase_inc: FixedPointPhase::new(phase_inc),
         }
     }
 }
@@ -104,7 +105,7 @@ where
 
             let m = std::cmp::min(i.len(), o.len());
             if m > 0 {
-                let rotation = Complex32::new(self.nco.phase_inc.cos(), self.nco.phase_inc.sin());
+                let rotation = Complex32::new(self.phase_inc.cos(), self.phase_inc.sin());
                 let mut current_phasor = Complex32::new(self.nco.phase.cos(), self.nco.phase.sin());
                 for (v, r) in i[..m].iter().zip(o[..m].iter_mut()) {
                     *r = (*v) * current_phasor;

@@ -1,4 +1,3 @@
-use futuresdr::macros::message_handler;
 use futuresdr::num_complex::ComplexFloat;
 use futuresdr::prelude::*;
 
@@ -62,7 +61,6 @@ where
         }
     }
 
-    #[message_handler]
     async fn auto_lock(
         &mut self,
         _io: &mut WorkIo,
@@ -78,7 +76,6 @@ where
         }
     }
 
-    #[message_handler]
     async fn gain_lock(
         &mut self,
         _io: &mut WorkIo,
@@ -94,7 +91,6 @@ where
         }
     }
 
-    #[message_handler]
     async fn max_gain(
         &mut self,
         _io: &mut WorkIo,
@@ -110,7 +106,6 @@ where
         }
     }
 
-    #[message_handler]
     async fn adjustment_rate(
         &mut self,
         _io: &mut WorkIo,
@@ -126,7 +121,6 @@ where
         }
     }
 
-    #[message_handler]
     async fn reference_power(
         &mut self,
         _io: &mut WorkIo,
