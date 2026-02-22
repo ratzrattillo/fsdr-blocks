@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use clap::{arg, Parser};
+use clap::Parser;
 use fsdr_blocks::sigmf::DatasetFormat;
 use fsdr_blocks::sigmf::DatasetFormat::*;
 use fsdr_blocks::sigmf::{SigMFSinkBuilder, SigMFSourceBuilder};
@@ -27,45 +27,44 @@ impl Cli {
     pub async fn execute(self) -> Result<()> {
         let mut fg = Flowgraph::new();
 
-        let mut src = SigMFSourceBuilder::from(&self.input);
-        let src = src.build::<f32>().await?;
+        let mut src_builder = SigMFSourceBuilder::from(&self.input);
+        let src = fg.add_block(src_builder.build::<f32>().await?);
 
         let snk = SigMFSinkBuilder::from(self.output);
 
-        let (conv, snk) = match self.target {
-            RI8 => (
-                TypeConvertersBuilder::lossy_scale_convert_f32_i8().build(),
-                snk.datatype(self.target).build::<i8>().await?,
-            ),
-            RU8 => (
-                TypeConvertersBuilder::lossy_scale_convert_f32_u8().build(),
-                snk.datatype(self.target).build::<u8>().await?,
-            ),
-            Rf32Be | Rf32Le => (
-                Apply::new(|x: &f32| *x).into(),
-                snk.datatype(self.target).build::<f32>().await?,
-            ),
-            Rf64Be | Rf64Le => (
-                TypeConvertersBuilder::convert::<f32, f64>().build(),
-                snk.datatype(self.target).build::<f64>().await?,
-            ),
-            Ri16Be | Ri16Le => (
-                TypeConvertersBuilder::lossy_scale_convert_f32_i16().build(),
-                snk.datatype(self.target).build::<i16>().await?,
-            ),
-            // Ri32Be | Ri32Le  => (
-            //     fg.add_block(TypeConvertersBuilder::lossy_scale_convert_f32_i32().build()),
-            //     fg.add_block(snk.datatype(self.target).build::<i32>().await?),
-            // ),
-            // Ru16Be | Ru16Le  => {
-            //     fg.add_block(TypeConvertersBuilder::convert::<f32, u16>().build())
-            // }
-            // Ru32Be | Ru32Le  => {
-            //     fg.add_block(TypeConvertersBuilder::convert::<f32, u32>().build())
-            // }
+        match self.target {
+            RI8 => {
+                let conv = TypeConvertersBuilder::lossy_scale_convert_f32_i8().build();
+                let snk = snk.datatype(self.target).build::<i8>().await?;
+                let src_ref = src.clone();
+                connect!(fg, src_ref > conv > snk);
+            }
+            RU8 => {
+                let conv = TypeConvertersBuilder::lossy_scale_convert_f32_u8().build();
+                let snk = snk.datatype(self.target).build::<u8>().await?;
+                let src_ref = src.clone();
+                connect!(fg, src_ref > conv > snk);
+            }
+            Rf32Be | Rf32Le => {
+                let conv: Apply<fn(&f32) -> f32, f32, f32> = Apply::new(|x: &f32| *x);
+                let snk = snk.datatype(self.target).build::<f32>().await?;
+                let src_ref = src.clone();
+                connect!(fg, src_ref > conv > snk);
+            }
+            Rf64Be | Rf64Le => {
+                let conv = TypeConvertersBuilder::convert::<f32, f64>().build();
+                let snk = snk.datatype(self.target).build::<f64>().await?;
+                let src_ref = src.clone();
+                connect!(fg, src_ref > conv > snk);
+            }
+            Ri16Be | Ri16Le => {
+                let conv = TypeConvertersBuilder::lossy_scale_convert_f32_i16().build();
+                let snk = snk.datatype(self.target).build::<i16>().await?;
+                let src_ref = src.clone();
+                connect!(fg, src_ref > conv > snk);
+            }
             _ => return Err(anyhow!("Unsupported target type: {}", self.target)),
         };
-        connect!(fg, src > conv > snk);
         // fg.connect_stream(src, "out", conv, "in")
         //     .with_context(|| "src->conv")?;
         // fg.connect_stream(conv, "out", snk, "in")

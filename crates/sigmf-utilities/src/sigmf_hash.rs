@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{arg, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use sigmf::RecordingBuilder;
 use std::path::PathBuf;
 
