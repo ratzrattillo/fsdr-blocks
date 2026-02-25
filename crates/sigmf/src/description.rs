@@ -6,7 +6,7 @@ use std::{
 };
 
 #[cfg(feature = "quickcheck")]
-use quickcheck::{empty_shrinker, Arbitrary, Gen};
+use quickcheck::{Arbitrary, Gen, empty_shrinker};
 
 use crate::{Annotation, Capture, Collection, DatasetFormat, Extension, Global, SigMFError};
 
