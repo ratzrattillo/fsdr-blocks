@@ -1,6 +1,6 @@
 use fsdr_blocks::cw::baseband_to_cw::BaseBandToCWBuilder;
 use fsdr_blocks::cw::shared::CWAlphabet::*;
-use fsdr_blocks::cw::shared::{char_to_baseband, CWAlphabet};
+use fsdr_blocks::cw::shared::{CWAlphabet, char_to_baseband};
 use futuresdr::blocks::{VectorSink, VectorSource};
 use futuresdr::macros::connect;
 use futuresdr::runtime::Result;

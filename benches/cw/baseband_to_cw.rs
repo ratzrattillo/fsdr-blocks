@@ -1,7 +1,7 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use fsdr_blocks::cw::baseband_to_cw::BaseBandToCW;
-use fsdr_blocks::cw::shared::{char_to_baseband, CWAlphabet};
-use futuresdr::runtime::Mocker;
+use fsdr_blocks::cw::shared::{CWAlphabet, char_to_baseband};
+use futuresdr::runtime::mocker::{Mocker, Reader, Writer};
 
 // cargo bench --profile release --bench bb_to_cw --features="cw"
 pub fn bench_baseband_to_cw(c: &mut Criterion) {
@@ -13,7 +13,7 @@ pub fn bench_baseband_to_cw(c: &mut Criterion) {
         .chars()
         .flat_map(|c| char_to_baseband_function(&c))
         .collect::<Vec<f32>>();
-    //println!("BaseBand Vector Length: {}, Content: {:?}", bb.len(), bb);
+    // println!("BaseBand Vector Length: {}, Content: {:?}", bb.len(), bb);
 
     let mut group = c.benchmark_group("baseband_to_cw");
 
@@ -21,11 +21,14 @@ pub fn bench_baseband_to_cw(c: &mut Criterion) {
 
     group.bench_function("mock-baseband-to-cw", |b| {
         b.iter(|| {
-            let block = BaseBandToCW::new_typed(100, samples_per_dot);
+            let block: BaseBandToCW<Reader<f32>, Writer<CWAlphabet>> =
+                BaseBandToCW::new(100, samples_per_dot);
             let mut mocker = Mocker::new(block);
 
-            mocker.input(0, baseband.clone());
-            mocker.init_output::<CWAlphabet>(0, baseband.len());
+            // mocker.input(0, baseband.clone());
+            mocker.input().set(baseband.clone());
+            // mocker.init_output::<CWAlphabet>(0, baseband.len());
+            mocker.output().reserve(baseband.len());
             mocker.run();
         });
     });

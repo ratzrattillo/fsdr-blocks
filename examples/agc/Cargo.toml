@@ -1,13 +1,12 @@
 [package]
 name = "agc"
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 
-[workspace]
-
-[[bin]]
-name = "audio-agc"
-path = "audio_agc.rs"
+#[[bin]]
+#name = "audio-agc"
+#path = "main"
 
 [dependencies]
-futuresdr = { path = "../..", features = ["audio"] }
+futuresdr = { git = "https://github.com/FutureSDR/FutureSDR", branch = "main", version = "0.0.40-dev", features = ["audio"] }
+fsdr-blocks = { path = "../../" }

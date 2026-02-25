@@ -3,8 +3,9 @@ use std::{borrow::Cow, collections::HashMap};
 use super::error::{Error, Result};
 use futuresdr::runtime::Pmt;
 use serde::{
+    Deserializer,
     de::{DeserializeSeed, Expected, MapAccess, Unexpected, Visitor},
-    forward_to_deserialize_any, Deserializer,
+    forward_to_deserialize_any,
 };
 
 pub struct PmtDist(Pmt);

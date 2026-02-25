@@ -25,7 +25,11 @@ pub struct BaseBandToCW<
     wordspace_range: RangeInclusive<usize>,
 }
 
-impl BaseBandToCW {
+impl<I, O> BaseBandToCW<I, O>
+where
+    I: CpuBufferReader<Item = f32>,
+    O: CpuBufferWriter<Item = CWAlphabet>,
+{
     pub fn new(
         accuracy: usize, // 100 = 100% accuracy = How accurate the timeslots for symbols and between symbols have to be kept
         samples_per_dot: usize,
@@ -47,8 +51,8 @@ impl BaseBandToCW {
         // println!("wordspace_range: {:?}", wordspace_range);
 
         BaseBandToCW {
-            input: DefaultCpuReader::<f32>::default(),
-            output: DefaultCpuWriter::<CWAlphabet>::default(),
+            input: I::default(),
+            output: O::default(),
             samples_per_dot,
             sample_count: 0,
             power_before: 0.,

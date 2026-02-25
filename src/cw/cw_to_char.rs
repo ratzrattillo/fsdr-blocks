@@ -1,7 +1,7 @@
 use futuresdr::prelude::*;
 
-use crate::cw::shared::get_alphabet;
 use crate::cw::shared::CWAlphabet::{self, LetterSpace, WordSpace};
+use crate::cw::shared::get_alphabet;
 use bimap::BiMap;
 
 #[derive(Block)]
@@ -18,11 +18,15 @@ pub struct CWToChar<
     alphabet: BiMap<char, Vec<CWAlphabet>>,
 }
 
-impl CWToChar {
+impl<I, O> CWToChar<I, O>
+where
+    I: CpuBufferReader<Item = CWAlphabet>,
+    O: CpuBufferWriter<Item = u32>,
+{
     pub fn new(alphabet: BiMap<char, Vec<CWAlphabet>>) -> Self {
         CWToChar {
-            input: DefaultCpuReader::<CWAlphabet>::default(),
-            output: DefaultCpuWriter::<u32>::default(),
+            input: I::default(),
+            output: O::default(),
             symbol_vec: vec![],
             alphabet,
         }

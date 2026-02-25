@@ -13,6 +13,7 @@ pub mod async_channel;
 pub mod cw;
 
 pub mod agc;
+pub use agc::{Agc, AgcBuilder};
 pub mod math;
 pub mod sigmf;
 pub mod stdinout;

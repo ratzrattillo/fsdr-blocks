@@ -1,5 +1,5 @@
 use fsdr_blocks::cw::cw_to_char::CWToCharBuilder;
-use fsdr_blocks::cw::shared::{msg_to_cw, CWAlphabet};
+use fsdr_blocks::cw::shared::{CWAlphabet, msg_to_cw};
 use futuresdr::async_io::block_on;
 use futuresdr::blocks::{ChannelSource, VectorSink, VectorSource};
 use futuresdr::futures::SinkExt;

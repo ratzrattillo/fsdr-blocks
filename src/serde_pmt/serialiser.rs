@@ -1,8 +1,8 @@
 use core::fmt::Display;
 use futuresdr::runtime::Pmt;
 use serde::{
-    ser::{self, Impossible},
     Serialize,
+    ser::{self, Impossible},
 };
 use std::collections::HashMap;
 

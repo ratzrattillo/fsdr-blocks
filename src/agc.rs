@@ -140,7 +140,7 @@ where
 #[doc(hidden)]
 impl<T, I, O> Kernel for Agc<T, I, O>
 where
-    T: Send + Sync + ComplexFloat + Default + std::fmt::Debug + std::marker::Copy + 'static,
+    T: Send + Sync + ComplexFloat + Default + std::fmt::Debug + Copy + 'static,
     I: CpuBufferReader<Item = T>,
     O: CpuBufferWriter<Item = T>,
 {

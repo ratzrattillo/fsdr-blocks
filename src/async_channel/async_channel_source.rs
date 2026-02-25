@@ -32,9 +32,9 @@ pub struct AsyncChannelSource<
 }
 
 impl<
-        T: Send + Sync + Default + Clone + Copy + std::fmt::Debug + 'static,
-        O: CpuBufferWriter<Item = T>,
-    > AsyncChannelSource<T, O>
+    T: Send + Sync + Default + Clone + Copy + std::fmt::Debug + 'static,
+    O: CpuBufferWriter<Item = T>,
+> AsyncChannelSource<T, O>
 {
     pub fn new(receiver: Receiver<Box<[T]>>) -> Self {
         AsyncChannelSource {
