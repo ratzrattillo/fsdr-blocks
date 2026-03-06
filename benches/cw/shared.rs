@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use fsdr_blocks::cw::shared::{char_to_baseband, msg_to_cw};
 
 // cargo bench --profile release --bench shared --features="cw"

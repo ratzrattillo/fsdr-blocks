@@ -1,95 +1,96 @@
-use async_trait::async_trait;
+use futuresdr::prelude::*;
 
-use futuresdr::runtime::BlockMeta;
-use futuresdr::runtime::BlockMetaBuilder;
-use futuresdr::runtime::Kernel;
-use futuresdr::runtime::MessageIo;
-use futuresdr::runtime::MessageIoBuilder;
-use futuresdr::runtime::Result;
-use futuresdr::runtime::StreamIo;
-use futuresdr::runtime::StreamIoBuilder;
-use futuresdr::runtime::WorkIo;
-use futuresdr::runtime::{Block, TypedBlock};
-
-use crate::cw::shared::get_alphabet;
 use crate::cw::shared::CWAlphabet::{self, LetterSpace, WordSpace};
+use crate::cw::shared::get_alphabet;
 use bimap::BiMap;
 
-pub struct CWToChar {
+#[derive(Block)]
+pub struct CWToChar<
+    I: CpuBufferReader<Item = CWAlphabet> = DefaultCpuReader<CWAlphabet>,
+    O: CpuBufferWriter<Item = u32> = DefaultCpuWriter<u32>,
+> {
+    #[input]
+    input: I,
+    #[output]
+    output: O,
     // Required to keep the state of already received pulses
     symbol_vec: Vec<CWAlphabet>,
     alphabet: BiMap<char, Vec<CWAlphabet>>,
 }
 
-impl CWToChar {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(alphabet: BiMap<char, Vec<CWAlphabet>>) -> Block {
-        Block::from_typed(Self::new_typed(alphabet))
-    }
-
-    pub fn new_typed(alphabet: BiMap<char, Vec<CWAlphabet>>) -> TypedBlock<Self> {
-        TypedBlock::new(
-            BlockMetaBuilder::new("CWToChar").build(),
-            StreamIoBuilder::new()
-                .add_input::<CWAlphabet>("in")
-                .add_output::<char>("out")
-                .build(),
-            MessageIoBuilder::new().build(),
-            CWToChar {
-                symbol_vec: vec![],
-                alphabet,
-            },
-        )
+impl<I, O> CWToChar<I, O>
+where
+    I: CpuBufferReader<Item = CWAlphabet>,
+    O: CpuBufferWriter<Item = u32>,
+{
+    pub fn new(alphabet: BiMap<char, Vec<CWAlphabet>>) -> Self {
+        CWToChar {
+            input: I::default(),
+            output: O::default(),
+            symbol_vec: vec![],
+            alphabet,
+        }
     }
 }
 
 #[doc(hidden)]
-#[async_trait]
-impl Kernel for CWToChar {
+impl<I, O> Kernel for CWToChar<I, O>
+where
+    I: CpuBufferReader<Item = CWAlphabet>,
+    O: CpuBufferWriter<Item = u32>,
+{
     async fn work(
         &mut self,
         io: &mut WorkIo,
-        sio: &mut StreamIo,
-        _mio: &mut MessageIo<Self>,
+        _mio: &mut MessageOutputs,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        // Not doing any checks on the output buffer length here.
-        // Assuming, that i and o are of the same length.
-        // Assuming, that one input sample generates at max one output sample.
-        let i = sio.input(0).slice::<CWAlphabet>();
-        let o = sio.output(0).slice::<char>();
+        let i = self.input.slice();
+        let o = self.output.slice();
 
-        let mut produced = 0;
+        let (consumed, produced, finished) = if i.is_empty() {
+            (0, 0, self.input.finished())
+        } else {
+            // Not doing any checks on the output buffer length here.
+            // Assuming, that i and o are of the same length.
+            // Assuming, that one input sample generates at max one output sample.
+            self.symbol_vec.append(&mut i.to_vec());
 
-        self.symbol_vec.append(&mut i.to_vec());
+            let mut produced = 0;
+            if self.symbol_vec.contains(&WordSpace) || self.symbol_vec.contains(&LetterSpace) {
+                let symbols: Vec<_> = self
+                    .symbol_vec
+                    .split_inclusive(|c| c == &LetterSpace || c == &WordSpace)
+                    .filter_map(|c| c.split_last())
+                    .map(|(last, elements)| {
+                        //println!("last: {}, elements: {:?}", last, elements);
+                        if last == &WordSpace {
+                            *self.alphabet.get_by_right(&vec![WordSpace]).unwrap_or(&'_')
+                        } else {
+                            *self.alphabet.get_by_right(elements).unwrap_or(&'_')
+                        }
+                    })
+                    .collect();
 
-        if self.symbol_vec.contains(&WordSpace) || self.symbol_vec.contains(&LetterSpace) {
-            for (index, c) in self
-                .symbol_vec
-                .split_inclusive(|c| c == &LetterSpace || c == &WordSpace)
-                .filter_map(|c| c.split_last())
-                .map(|(last, elements)| {
-                    //println!("last: {}, elements: {:?}", last, elements);
-                    if last == &WordSpace {
-                        *self.alphabet.get_by_right(&vec![WordSpace]).unwrap_or(&'_')
-                    } else {
-                        *self.alphabet.get_by_right(elements).unwrap_or(&'_')
-                    }
-                })
-                .enumerate()
-            {
-                o[index] = c;
-                produced = index + 1;
-                //println!("c: {}, index: {}, produced: {}", c, index, produced);
+                let n = std::cmp::min(symbols.len(), o.len());
+                for j in 0..n {
+                    o[j] = symbols[j] as u32;
+                    //println!("c: {}, index: {}, produced: {}", c, index, produced);
+                }
+                produced = n;
+                self.symbol_vec.clear(); // This might be wrong if we didn't consume everything, but original did this
             }
 
-            self.symbol_vec.clear();
+            (i.len(), produced, self.input.finished())
+        };
+
+        if consumed > 0 {
+            self.input.consume(consumed);
         }
-
-        sio.input(0).consume(i.len());
-        sio.output(0).produce(produced);
-
-        if sio.input(0).finished() {
+        if produced > 0 {
+            self.output.produce(produced);
+        }
+        if finished {
             io.finished = true;
         }
 
@@ -119,7 +120,7 @@ impl CWToCharBuilder {
         self
     }*/
 
-    pub fn build(self) -> Block {
+    pub fn build(self) -> CWToChar {
         CWToChar::new(self.alphabet)
     }
 }

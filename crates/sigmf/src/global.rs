@@ -1,9 +1,9 @@
-use crate::{errors::SigMFError, AntennaExtension, DatasetFormat, Extension};
+use crate::{AntennaExtension, DatasetFormat, Extension, errors::SigMFError};
 use serde_json::Value;
 use std::collections::HashMap;
 
 #[cfg(feature = "quickcheck")]
-use quickcheck::{empty_shrinker, Arbitrary, Gen};
+use quickcheck::{Arbitrary, Gen, empty_shrinker};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Global {

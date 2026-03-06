@@ -1,12 +1,13 @@
 use bimap::BiMap;
 use std::fmt;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Default)]
 pub enum CWAlphabet {
     Dot,
     Dash,
     LetterSpace,
     WordSpace,
+    #[default]
     Unknown,
 }
 
@@ -139,7 +140,7 @@ pub fn char_to_baseband(samles_per_dot: usize) -> impl FnMut(&char) -> Vec<f32> 
 ///
 /// # Usage
 /// ```
-/// use futuresdr::log::debug;
+///
 /// use fsdr_blocks::cw::shared::msg_to_cw;
 /// use fsdr_blocks::cw::shared::CWAlphabet::*;
 ///

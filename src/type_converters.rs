@@ -20,7 +20,7 @@
 //! ```
 //!
 //! Some other conversions are lossy because there is no natural conversion of all possible inputs.
-//! Conversion of `f32` into `i6` is an example because `16.3` has no direct conversion, yet `16` is a good candidate.
+//! Conversion of `f32` into `i16` is an example because `16.3` has no direct conversion, yet `16` is a good candidate.
 //! But `f32` can also represent positive or negative infinity, and NaN (not a number) that are not convertible.
 //!
 //! ```
@@ -31,7 +31,6 @@
 use core::marker::PhantomData;
 
 use futuresdr::blocks::Apply;
-use futuresdr::runtime::Block;
 
 /// Main builder for type conversion blocks
 pub struct TypeConvertersBuilder {}
@@ -96,17 +95,17 @@ impl TypeConvertersBuilder {
 
 impl<A, B> ConverterBuilder<A, B>
 where
-    A: Copy + Send + 'static,
-    B: Copy + Send + From<A> + 'static,
+    A: Copy + Send + Sync + Default + std::fmt::Debug + 'static,
+    B: Copy + Send + Sync + Default + std::fmt::Debug + From<A> + 'static,
 {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &A| -> B { (*i).into() }).into()
+    pub fn build(self) -> Apply<impl FnMut(&A) -> B + Send + 'static, A, B> {
+        Apply::new(|i: &A| -> B { (*i).into() })
     }
 }
 
 impl ScaledConverterBuilder<u8, f32> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &u8| -> f32 { ScaledConverterBuilder::<u8, f32>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&u8) -> f32 + Send + 'static, u8, f32> {
+        Apply::new(|i: &u8| -> f32 { ScaledConverterBuilder::<u8, f32>::convert(i) })
     }
 
     pub fn convert(i: &u8) -> f32 {
@@ -115,8 +114,8 @@ impl ScaledConverterBuilder<u8, f32> {
 }
 
 impl ScaledConverterBuilder<u16, f32> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &u16| -> f32 { ScaledConverterBuilder::<u16, f32>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&u16) -> f32 + Send + 'static, u16, f32> {
+        Apply::new(|i: &u16| -> f32 { ScaledConverterBuilder::<u16, f32>::convert(i) })
     }
 
     pub fn convert(i: &u16) -> f32 {
@@ -125,8 +124,8 @@ impl ScaledConverterBuilder<u16, f32> {
 }
 
 impl ScaledConverterBuilder<u32, f32> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &u32| -> f32 { ScaledConverterBuilder::<u32, f32>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&u32) -> f32 + Send + 'static, u32, f32> {
+        Apply::new(|i: &u32| -> f32 { ScaledConverterBuilder::<u32, f32>::convert(i) })
     }
 
     pub fn convert(i: &u32) -> f32 {
@@ -135,8 +134,8 @@ impl ScaledConverterBuilder<u32, f32> {
 }
 
 impl ScaledConverterBuilder<i8, f32> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &i8| -> f32 { ScaledConverterBuilder::<i8, f32>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&i8) -> f32 + Send + 'static, i8, f32> {
+        Apply::new(|i: &i8| -> f32 { ScaledConverterBuilder::<i8, f32>::convert(i) })
     }
 
     pub fn convert(i: &i8) -> f32 {
@@ -145,8 +144,8 @@ impl ScaledConverterBuilder<i8, f32> {
 }
 
 impl ScaledConverterBuilder<i16, f32> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &i16| -> f32 { ScaledConverterBuilder::<i16, f32>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&i16) -> f32 + Send + 'static, i16, f32> {
+        Apply::new(|i: &i16| -> f32 { ScaledConverterBuilder::<i16, f32>::convert(i) })
     }
 
     pub fn convert(i: &i16) -> f32 {
@@ -155,8 +154,8 @@ impl ScaledConverterBuilder<i16, f32> {
 }
 
 impl ScaledConverterBuilder<i32, f32> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &i32| -> f32 { ScaledConverterBuilder::<i32, f32>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&i32) -> f32 + Send + 'static, i32, f32> {
+        Apply::new(|i: &i32| -> f32 { ScaledConverterBuilder::<i32, f32>::convert(i) })
     }
 
     pub fn convert(i: &i32) -> f32 {
@@ -165,8 +164,8 @@ impl ScaledConverterBuilder<i32, f32> {
 }
 
 impl ScaledConverterBuilder<f32, u8> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &f32| -> u8 { ScaledConverterBuilder::<f32, u8>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&f32) -> u8 + Send + 'static, f32, u8> {
+        Apply::new(|i: &f32| -> u8 { ScaledConverterBuilder::<f32, u8>::convert(i) })
     }
 
     pub fn convert(i: &f32) -> u8 {
@@ -175,8 +174,8 @@ impl ScaledConverterBuilder<f32, u8> {
 }
 
 impl ScaledConverterBuilder<f32, i8> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &f32| -> i8 { ScaledConverterBuilder::<f32, i8>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&f32) -> i8 + Send + 'static, f32, i8> {
+        Apply::new(|i: &f32| -> i8 { ScaledConverterBuilder::<f32, i8>::convert(i) })
     }
 
     pub fn convert(i: &f32) -> i8 {
@@ -185,8 +184,8 @@ impl ScaledConverterBuilder<f32, i8> {
 }
 
 impl ScaledConverterBuilder<f32, i16> {
-    pub fn build(self) -> Block {
-        Apply::new(|i: &f32| -> i16 { ScaledConverterBuilder::<f32, i16>::convert(i) }).into()
+    pub fn build(self) -> Apply<impl FnMut(&f32) -> i16 + Send + 'static, f32, i16> {
+        Apply::new(|i: &f32| -> i16 { ScaledConverterBuilder::<f32, i16>::convert(i) })
     }
 
     pub fn convert(i: &f32) -> i16 {

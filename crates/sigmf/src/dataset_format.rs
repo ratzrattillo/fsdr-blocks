@@ -1,7 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 #[cfg(feature = "quickcheck")]
-use quickcheck::{empty_shrinker, single_shrinker, Arbitrary, Gen};
+use quickcheck::{Arbitrary, Gen, empty_shrinker, single_shrinker};
 
 use crate::SigMFError;
 

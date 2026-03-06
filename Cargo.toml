@@ -1,7 +1,7 @@
 [package]
 name = "fsdr-blocks"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 authors = ["FutureSDR Contributors <team@futuresdr.org>"]
 license = "Apache-2.0"
 homepage = "https://www.futuresdr.org"
@@ -16,26 +16,24 @@ readme = "README.md"
 members = [
     ".",
     "crates/*",
-    # "examples/*",
+    "examples/*",
 ]
 
 [dependencies]
-futuresdr = { git = "https://github.com/FutureSDR/FutureSDR", branch = "main", version = "0.0.37"}
-#futuresdr = { path = "../FutureSDR" }
-async-channel = { version = "2.3.1", optional = true }
-async-trait = "0.1.81"
-crossbeam-channel = { version = "0.5.13", optional = true }
-bimap = { version = "0.6.3", optional = true }
-sigmf = { version = "0.1.0", path = "crates/sigmf" }
-async-fs = "2.1.2"
-serde = "1.0.204"
+futuresdr = { git = "https://github.com/FutureSDR/FutureSDR", branch = "main", version = "0.0.40-dev"}
+async-channel = { version = "2.5", optional = true }
+crossbeam-channel = { version = "0.5", optional = true }
+bimap = { version = "0.6", optional = true }
+sigmf = { version = "0.1", path = "crates/sigmf" }
+async-fs = "2.2"
+serde = "1"
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
-tokio-test = "0.4.4"
-rand = { version = "0.8.5" }
+criterion = { version = "0.8", features = ["html_reports"] }
 quickcheck_macros = "1"
-serde_json = "1.0.120"
+tokio-test = "0.4"
+rand = { version = "0.10", features=["thread_rng"] }
+serde_json = "1"
 
 [features]
 default = []

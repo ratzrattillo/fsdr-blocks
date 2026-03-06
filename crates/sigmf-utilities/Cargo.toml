@@ -1,7 +1,7 @@
 [package]
 name = "sigmf-utilities"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["FutureSDR Contributors <team@futuresdr.org>", "Loïc Fejoz <loic@fejoz.net>"]
 license = "Apache-2.0 or MIT"
 repository = "https://github.com/futuresdr/fsdr-blocks/"
@@ -13,15 +13,15 @@ readme = "README.md"
 
 [dependencies]
 anyhow = "1.0"
-clap = { version = "4.4.7", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 fsdr-blocks = {path="../../"}
 futuresdr = { git = "https://github.com/FutureSDR/FutureSDR", branch = "main" }
 serde = "^1.0"
 serde_derive = "^1.0"
 serde_json = "^1.0"
 sigmf = {path="../sigmf"}
-thiserror = "1.0.50"
-walkdir = "2.4.0"
+thiserror = "2.0"
+walkdir = "2.5"
 
 [build-dependencies]
 rustc_version = "0.4.0"

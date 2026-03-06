@@ -2,16 +2,7 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::path::PathBuf;
 
-use futuresdr::runtime::BlockMeta;
-use futuresdr::runtime::BlockMetaBuilder;
-use futuresdr::runtime::Kernel;
-use futuresdr::runtime::MessageIo;
-use futuresdr::runtime::MessageIoBuilder;
-use futuresdr::runtime::Result;
-use futuresdr::runtime::StreamIo;
-use futuresdr::runtime::StreamIoBuilder;
-use futuresdr::runtime::WorkIo;
-use futuresdr::runtime::{Block, Pmt, Tag};
+use futuresdr::prelude::*;
 
 use sigmf::Annotation;
 use sigmf::{DatasetFormat, DescriptionBuilder};
@@ -39,46 +30,37 @@ use crate::serde_pmt::from_pmt;
 /// let sink = builder.build::<u16>();
 /// ```
 #[cfg_attr(docsrs, doc(cfg(not(target_arch = "wasm32"))))]
-pub struct SigMFSink<T, W, M>
-where
-    T: Send + 'static + Sized,
-    W: Write,
-    M: Write,
-{
+#[derive(Block)]
+pub struct SigMFSink<
+    T: Send + Sync + Default + Clone + std::fmt::Debug + 'static,
+    W: Write + Send + 'static,
+    M: Write + Send + 'static,
+    I: CpuBufferReader<Item = T> = DefaultCpuReader<T>,
+> {
+    #[input]
+    input: I,
     pub writer: W,
     pub meta_writer: M,
     pub description: DescriptionBuilder,
     // global_index: usize,
     // sample_index: usize,
-    _sample_type: std::marker::PhantomData<T>,
-    _writer_type: std::marker::PhantomData<W>,
-    _meta_writer_type: std::marker::PhantomData<M>,
 }
 
-impl<T, W, M> SigMFSink<T, W, M>
+impl<T, W, M, I> SigMFSink<T, W, M, I>
 where
-    T: Send + 'static + Sized + std::marker::Sync,
-    W: Write + std::marker::Send + 'static, // + std::marker::Sync + std::marker::Send + std::marker::Unpin,
-    M: Write + std::marker::Send + 'static, //std::io::Write, // + Send + std::marker::Sync,
+    T: Send + Sync + Default + Clone + std::fmt::Debug + 'static,
+    W: Write + Send + 'static,
+    M: Write + Send + 'static,
+    I: CpuBufferReader<Item = T>,
 {
     /// Create FileSink block
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(writer: W, description: DescriptionBuilder, meta_writer: M) -> Block {
-        Block::new(
-            BlockMetaBuilder::new("SigMFSink").build(),
-            StreamIoBuilder::new().add_input::<T>("in").build(),
-            MessageIoBuilder::new().build(),
-            SigMFSink::<T, W, M> {
-                writer,
-                meta_writer,
-                description,
-                // global_index: 0,
-                // sample_index: 0,
-                _sample_type: std::marker::PhantomData,
-                _writer_type: std::marker::PhantomData,
-                _meta_writer_type: std::marker::PhantomData,
-            },
-        )
+    pub fn new(writer: W, description: DescriptionBuilder, meta_writer: M) -> Self {
+        SigMFSink {
+            input: I::default(),
+            writer,
+            meta_writer,
+            description,
+        }
     }
 }
 
@@ -124,67 +106,63 @@ pub fn convert_pmt_to_annotation(value: &Pmt) -> Option<Annotation> {
 }
 
 #[doc(hidden)]
-#[async_trait]
-impl<T, W, M> Kernel for SigMFSink<T, W, M>
+impl<T, W, M, I> Kernel for SigMFSink<T, W, M, I>
 where
-    T: Send + 'static + Sized + std::marker::Sync,
+    T: Send + Sync + Default + Clone + std::fmt::Debug + 'static,
     W: Write + Send + 'static,
-    M: Write + Send, //std::io::Write + Send + std::marker::Sync,
+    M: Write + Send + 'static,
+    I: CpuBufferReader<Item = T>,
 {
     async fn work(
         &mut self,
         io: &mut WorkIo,
-        sio: &mut StreamIo,
-        _mio: &mut MessageIo<Self>,
+        _mio: &mut MessageOutputs,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        let i = sio.input(0).slice_unchecked::<u8>();
+        let items = {
+            let (i, tags) = self.input.slice_with_tags();
+            let items = i.len();
 
-        let item_size = std::mem::size_of::<T>();
-        let items = i.len() / item_size;
-
-        if items > 0 {
-            let i = &i[..items * item_size];
-            let _ = self.writer.write_all(i)?;
-        }
-        for item in sio.input(0).tags() {
-            // let index = item.index;
-            #[allow(clippy::single_match)] // Because of todo!()
-            match &item.tag {
-                Tag::Data(pmt) => {
+            if items > 0 {
+                let bytes = unsafe {
+                    std::slice::from_raw_parts(i.as_ptr() as *const u8, std::mem::size_of_val(i))
+                };
+                self.writer.write_all(bytes)?;
+            }
+            for item in tags {
+                // let index = item.index;
+                #[allow(clippy::single_match)] // Because of todo!()
+                if let Tag::Data(pmt) = &item.tag {
                     if let Some(annot) = convert_pmt_to_annotation(pmt) {
                         self.description.add_annotation(annot)?;
                     }
-                }
-                _ => {
-                    todo!("Automate other pmt to annotation")
+                } else {
+                    // todo!("Automate other pmt to annotation")
                 }
             }
-        }
 
-        if sio.input(0).finished() {
-            io.finished = true;
-        }
+            if self.input.finished() {
+                io.finished = true;
+            }
+            items
+        };
 
-        sio.input(0).consume(items);
+        if items > 0 {
+            self.input.consume(items);
+        }
         Ok(())
     }
 
     // async fn init(
     //     &mut self,
     //     _sio: &mut StreamIo,
-    //     _mio: &mut MessageIo<Self>,
+    //     _mio: &mut MessageOutputs,
     //     _meta: &mut BlockMeta,
     // ) -> Result<()> {
     //     Ok(())
     // }
 
-    async fn deinit(
-        &mut self,
-        _sio: &mut StreamIo,
-        _mio: &mut MessageIo<Self>,
-        _meta: &mut BlockMeta,
-    ) -> Result<()> {
+    async fn deinit(&mut self, _mio: &mut MessageOutputs, _meta: &mut BlockMeta) -> Result<()> {
         let desc = self.description.build()?;
         desc.to_writer_pretty(&mut self.meta_writer)?;
         Ok(())
@@ -251,7 +229,9 @@ impl From<&str> for SigMFSinkBuilder {
 }
 
 impl SigMFSinkBuilder {
-    pub async fn build<T: Sized + 'static + Sync + Send>(&mut self) -> Result<Block> {
+    pub async fn build<T: Send + Sync + Default + Clone + std::fmt::Debug + 'static>(
+        &mut self,
+    ) -> Result<SigMFSink<T, std::fs::File, std::fs::File>> {
         let desc = DescriptionBuilder::from(self.datatype);
         self.basename.set_extension("sigmf-data");
         let actual_file = std::fs::File::create(&self.basename)?;

@@ -1,7 +1,7 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use fsdr_blocks::cw::cw_to_char::CWToChar;
-use fsdr_blocks::cw::shared::{get_alphabet, msg_to_cw};
-use futuresdr::runtime::Mocker;
+use fsdr_blocks::cw::shared::{CWAlphabet, get_alphabet, msg_to_cw};
+use futuresdr::runtime::mocker::{Mocker, Reader, Writer};
 
 // cargo bench --profile release --bench cw_to_char --features="cw"
 pub fn bench_cw_to_char(c: &mut Criterion) {
@@ -18,11 +18,13 @@ pub fn bench_cw_to_char(c: &mut Criterion) {
 
     group.bench_function("mock-cw-to-char", |b| {
         b.iter(|| {
-            let block = CWToChar::new_typed(get_alphabet());
+            let block: CWToChar<Reader<CWAlphabet>, Writer<u32>> = CWToChar::new(get_alphabet());
             let mut mocker = Mocker::new(block);
 
-            mocker.input(0, cw.clone());
-            mocker.init_output::<char>(0, cw.len());
+            // mocker.input(0, cw.clone());
+            mocker.input().set(cw.clone());
+            // mocker.init_output::<char>(0, cw.len());
+            mocker.output().reserve(cw.len());
             mocker.run();
         });
     });

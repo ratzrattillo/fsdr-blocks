@@ -1,7 +1,7 @@
 use fsdr_blocks::cw::baseband_to_cw::BaseBandToCWBuilder;
 use fsdr_blocks::cw::shared::CWAlphabet::*;
-use fsdr_blocks::cw::shared::{char_to_baseband, CWAlphabet};
-use futuresdr::blocks::{VectorSink, VectorSinkBuilder, VectorSource};
+use fsdr_blocks::cw::shared::{CWAlphabet, char_to_baseband};
+use futuresdr::blocks::{VectorSink, VectorSource};
 use futuresdr::macros::connect;
 use futuresdr::runtime::Result;
 use futuresdr::runtime::{Flowgraph, Runtime};
@@ -21,20 +21,20 @@ fn test_baseband_to_cw() -> Result<()> {
         .collect::<Vec<f32>>();
     println!("BaseBand Vector Length: {}, Content: {:?}", bb.len(), bb);
 
-    let vector_src = VectorSource::new(bb);
+    let vector_src = VectorSource::<f32>::new(bb);
     let baseband_to_cw = BaseBandToCWBuilder::new()
         .accuracy(100)
         .samples_per_dot(samples_per_dot)
         .build();
-    let vector_snk = VectorSinkBuilder::<CWAlphabet>::new().build();
+    let vector_snk = VectorSink::<CWAlphabet>::new(1024);
 
     connect!(fg,
         vector_src > baseband_to_cw > vector_snk;
     );
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
-    let snk = fg.kernel::<VectorSink<CWAlphabet>>(vector_snk).unwrap();
+    let snk = vector_snk.get()?;
     let received = snk.items();
 
     println!(

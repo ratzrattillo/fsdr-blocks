@@ -2,7 +2,7 @@ pub mod error;
 
 mod serialiser;
 use futuresdr::runtime::Pmt;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 pub use serialiser::Serializer;
 
 use self::deserialiser::PmtDist;

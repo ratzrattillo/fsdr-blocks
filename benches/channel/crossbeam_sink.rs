@@ -1,17 +1,18 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use fsdr_blocks::channel::CrossbeamSink;
-use futuresdr::runtime::Mocker;
-use rand::Rng;
+use futuresdr::runtime::mocker::{Mocker, Reader};
+use rand::RngExt;
 
 /// This benchmark seems to highly depend on the underlying scheduling of polling from the channel
+// cargo bench --profile release --bench crossbeam_sink --features="crossbeam"
 pub fn crossbeam_sink_boxed_slice_u32(c: &mut Criterion) {
     let n_samp = 8192;
-    let input: Vec<u32> = rand::thread_rng()
-        .sample_iter(rand::distributions::Uniform::<u32>::new(0, 1024))
+    let input: Vec<u32> = rand::rng()
+        .sample_iter(rand::distr::Uniform::<u32>::new(0, 1024).unwrap())
         .take(n_samp)
         .collect();
-    let input = input.into_boxed_slice();
-    let input = vec![input];
+    // let input = input.into_boxed_slice();
+    // let input = vec![input];
 
     let (tx, rx) = crossbeam_channel::unbounded::<Box<[u32]>>();
 
@@ -21,10 +22,11 @@ pub fn crossbeam_sink_boxed_slice_u32(c: &mut Criterion) {
 
     group.bench_function("mock-u32-crossbeam-sink", |b| {
         b.iter(|| {
-            let block = CrossbeamSink::new_typed(tx.clone());
+            let block: CrossbeamSink<u32, Reader<u32>> = CrossbeamSink::new(tx.clone());
             let mut mocker = Mocker::new(block);
 
-            mocker.input(0, input.clone());
+            // mocker.input(0, input.clone());
+            mocker.input().set(input.clone());
             mocker.run();
 
             // receive again all samples sent into the crossbeam_sink...

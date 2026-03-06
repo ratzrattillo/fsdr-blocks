@@ -3,9 +3,6 @@
 
 // #![feature(async_fn_in_trait)]
 
-#[macro_use]
-pub extern crate async_trait;
-
 #[cfg(feature = "crossbeam")]
 pub mod channel;
 
@@ -16,6 +13,7 @@ pub mod async_channel;
 pub mod cw;
 
 pub mod agc;
+pub use agc::{Agc, AgcBuilder};
 pub mod math;
 pub mod sigmf;
 pub mod stdinout;

@@ -1,7 +1,7 @@
 use fsdr_blocks::cw::cw_to_char::CWToCharBuilder;
-use fsdr_blocks::cw::shared::{msg_to_cw, CWAlphabet};
+use fsdr_blocks::cw::shared::{CWAlphabet, msg_to_cw};
 use futuresdr::async_io::block_on;
-use futuresdr::blocks::{ChannelSource, VectorSink, VectorSinkBuilder, VectorSource};
+use futuresdr::blocks::{ChannelSource, VectorSink, VectorSource};
 use futuresdr::futures::SinkExt;
 use futuresdr::macros::connect;
 use futuresdr::runtime::Result;
@@ -17,26 +17,30 @@ fn test_cw_to_char_vector() -> Result<()> {
     let cw = msg_to_cw(message.as_slice());
     //println!("CW-Alphabet Vector Length: {}, Content: {:?}", cw.len(), cw);
 
-    let vector_src = VectorSource::new(cw);
+    let vector_src = VectorSource::<CWAlphabet>::new(cw);
     let cw_to_char = CWToCharBuilder::new().build();
-    let vector_snk = VectorSinkBuilder::<char>::new().build();
+    let vector_snk = VectorSink::<u32>::new(1024);
 
     connect!(fg,
         vector_src > cw_to_char;
         cw_to_char > vector_snk;
     );
 
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
-    let snk = fg.kernel::<VectorSink<char>>(vector_snk).unwrap();
-    let received = snk.items();
+    let snk = vector_snk.get()?;
+    let received: Vec<char> = snk
+        .items()
+        .iter()
+        .map(|&c| char::from_u32(c).unwrap_or('_'))
+        .collect();
 
     /*println!(
         "Char Vector Length: {}, Content: {:?}",
         received.len(),
         received
     );*/
-    assert_eq!(&vec!['S', ' ', 'O', '_', ' ', ' ', 'S'], received);
+    assert_eq!(vec!['S', ' ', 'O', '_', ' ', ' ', 'S'], received);
 
     Ok(())
 }
@@ -50,15 +54,15 @@ fn test_cw_to_char_channel() -> Result<()> {
 
     let channel_src = ChannelSource::<CWAlphabet>::new(rx);
     let cw_to_char = CWToCharBuilder::new().build();
-    let vector_snk = VectorSinkBuilder::<char>::new().build();
+    let vector_snk = VectorSink::<u32>::new(1024);
 
     connect!(fg,
         channel_src > cw_to_char > vector_snk;
     );
 
     let rt = Runtime::new();
-    let fg = block_on(async move {
-        let (fg, _) = rt.start(fg).await;
+    let _fg = block_on(async move {
+        let (fg, _) = rt.start(fg).await.unwrap();
         let c = msg_to_cw(['S'].as_slice()).into_boxed_slice();
         tx.send(c).await.unwrap();
         let c = msg_to_cw([' '].as_slice()).into_boxed_slice();
@@ -75,15 +79,19 @@ fn test_cw_to_char_channel() -> Result<()> {
         fg.await // as Result<Flowgraph>
     })?;
 
-    let snk = fg.kernel::<VectorSink<char>>(vector_snk).unwrap();
-    let received = snk.items();
+    let snk = vector_snk.get()?;
+    let received: Vec<char> = snk
+        .items()
+        .iter()
+        .map(|&c| char::from_u32(c).unwrap_or('_'))
+        .collect();
 
     /*println!(
         "Char Vector Length: {}, Content: {:?}",
         received.len(),
         received
     );*/
-    assert_eq!(&vec!['S', ' ', 'O', '_', 'S'], received);
+    assert_eq!(vec!['S', ' ', 'O', '_', 'S'], received);
 
     Ok(())
 }

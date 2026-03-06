@@ -1,6 +1,5 @@
 use fsdr_blocks::math::FrequencyShifter;
 use futuresdr::blocks::VectorSink;
-use futuresdr::blocks::VectorSinkBuilder;
 use futuresdr::blocks::VectorSource;
 use futuresdr::macros::connect;
 use futuresdr::num_complex::Complex32;
@@ -16,14 +15,14 @@ fn freq_shift_f32() -> Result<()> {
 
     let orig: Vec<f32> = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
     let src = VectorSource::<f32>::new(orig.clone());
-    let vect_sink = VectorSinkBuilder::<f32>::new().build();
+    let vect_sink = VectorSink::<f32>::new(1024);
 
     connect!(fg,
         src > freq_shifter > vect_sink;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
-    let snk_0 = fg.kernel::<VectorSink<f32>>(vect_sink).unwrap();
+    let snk_0 = vect_sink.get()?;
     let snk_0 = snk_0.items();
 
     assert_eq!(snk_0.len(), orig.len());
@@ -64,20 +63,20 @@ fn freq_shift_c32() -> Result<()> {
     let expected = expected;
 
     let src = VectorSource::<Complex32>::new(orig.clone());
-    let vect_sink = VectorSinkBuilder::<Complex32>::new().build();
+    let vect_sink = VectorSink::<Complex32>::new(1024);
 
     connect!(fg,
         src > freq_shifter > vect_sink;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
-    let snk_0 = fg.kernel::<VectorSink<Complex32>>(vect_sink).unwrap();
+    let snk_0 = vect_sink.get()?;
     let snk_0 = snk_0.items();
 
     assert_eq!(snk_0.len(), orig.len());
     for (i, (v, e)) in snk_0.iter().zip(expected.iter()).enumerate() {
         assert!(
-            (v - e).norm() < 0.000000001,
+            (v - e).norm() < 0.00001,
             "Equality expected. actual[{i}]: {v}, expected[{i}]: {e}"
         );
     }

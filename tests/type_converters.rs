@@ -1,6 +1,5 @@
 use fsdr_blocks::type_converters::*;
 use futuresdr::blocks::VectorSink;
-use futuresdr::blocks::VectorSinkBuilder;
 use futuresdr::blocks::VectorSource;
 use futuresdr::macros::connect;
 use futuresdr::runtime::Flowgraph;
@@ -15,14 +14,14 @@ fn convert_u8_f32() -> Result<()> {
 
     let orig: Vec<u8> = vec![1, 0, 255, 42, 53, 89, 75];
     let src = VectorSource::<u8>::new(orig.clone());
-    let vect_sink = VectorSinkBuilder::<f32>::new().build();
+    let vect_sink = VectorSink::<f32>::new(1024);
 
     connect!(fg,
         src > convert_u8_f32 > vect_sink;
     );
-    fg = Runtime::new().run(fg)?;
+    Runtime::new().run(fg)?;
 
-    let snk = fg.kernel::<VectorSink<f32>>(vect_sink).unwrap();
+    let snk = vect_sink.get()?;
     let v = snk.items();
 
     assert_eq!(v.len(), orig.len());
@@ -44,14 +43,14 @@ fn convert_u8_f32() -> Result<()> {
 
 //     let orig: Vec<u8> = vec![1, 0, 255, 42, 53, 89, 75];
 //     let src = VectorSource::<u8>::new(orig.clone());
-//     let vect_sink = VectorSinkBuilder::<f32>::new().build();
+//     let vect_sink = VectorSink::<f32>::new(1024);
 
 //     connect!(fg,
 //         src > convert_u8_f32 > vect_sink;
 //     );
-//     fg = Runtime::new().run(fg)?;
+//     Runtime::new().run(fg)?;
 
-//     let snk = fg.kernel::<VectorSink<f32>>(vect_sink).unwrap();
+//     let snk = vect_sink.get()?;
 //     let v = snk.items();
 
 //     assert_eq!(v.len(), orig.len());
