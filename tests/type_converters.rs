@@ -1,10 +1,10 @@
 use fsdr_blocks::type_converters::*;
 use futuresdr::blocks::VectorSink;
 use futuresdr::blocks::VectorSource;
-use futuresdr::macros::connect;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Result;
 use futuresdr::runtime::Runtime;
+use futuresdr::runtime::macros::connect;
 
 #[test]
 fn convert_u8_f32() -> Result<()> {
@@ -19,10 +19,10 @@ fn convert_u8_f32() -> Result<()> {
     connect!(fg,
         src > convert_u8_f32 > vect_sink;
     );
-    Runtime::new().run(fg)?;
+    let fg = Runtime::new().run(fg)?;
 
-    let snk = vect_sink.get()?;
-    let v = snk.items();
+    let binding = vect_sink.get(&fg)?;
+    let v = binding.items();
 
     assert_eq!(v.len(), orig.len());
     for (v_before, v_after) in orig.iter().zip(v) {

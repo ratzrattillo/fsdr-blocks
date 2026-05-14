@@ -1,4 +1,4 @@
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 use crate::cw::shared::CWAlphabet::{self, LetterSpace, WordSpace};
 use crate::cw::shared::get_alphabet;

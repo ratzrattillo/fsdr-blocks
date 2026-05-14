@@ -1,8 +1,8 @@
 use fsdr_blocks::sigmf::{BytesConveter, SigMFSink, SigMFSourceBuilder};
 use futuresdr::{
     blocks::{VectorSink, VectorSource},
-    macros::connect,
     runtime::Result,
+    runtime::macros::connect,
     runtime::{Flowgraph, Runtime},
 };
 
@@ -37,11 +37,11 @@ where
     connect!(fg,
         src1 > snk1;
     );
-    Runtime::new().run(fg)?;
-    let snk1 = snk1.get()?;
-    let desc = snk1.description.build()?;
+    let fg = Runtime::new().run(fg)?;
+    let snk1_guard = snk1.get(&fg)?;
+    let desc = snk1_guard.description.build()?;
+    let data_file = snk1_guard.writer.to_owned().into_inner();
     let mut fg = Flowgraph::new();
-    let data_file = snk1.writer.to_owned().into_inner();
     let data_file = futuresdr::futures::io::Cursor::new(data_file);
     let src2 = futuresdr::futures::executor::block_on(
         SigMFSourceBuilder::with_data_and_description(data_file, desc).build::<T>(),
@@ -50,8 +50,8 @@ where
     connect!(fg,
         src2 > snk2;
     );
-    Runtime::new().run(fg)?;
-    let snk2 = snk2.get()?.items().clone();
+    let fg = Runtime::new().run(fg)?;
+    let snk2 = snk2.get(&fg)?.items().clone();
     assert_eq!(data.len(), snk2.len());
     for (o, i) in data.iter().zip(snk2) {
         assert_eq!(o, &i);
@@ -116,11 +116,10 @@ fn sigmf_read_write_annotation() -> Result<()> {
         src1 > snk1;
     );
     // Now run the flowgraph
-    Runtime::new().run(fg)?;
+    let fg = Runtime::new().run(fg)?;
 
     // Time to verify
-    let snk1 = snk1.get()?;
-    let tgt_desc = snk1.description.build()?;
+    let tgt_desc = snk1.get(&fg)?.description.build()?;
     let annotations = tgt_desc.annotations()?;
     assert_eq!(2, annotations.len());
     let annot1 = annotations

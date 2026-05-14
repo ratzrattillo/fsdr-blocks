@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 use crate::cw::shared::CWAlphabet::{self, *};
 

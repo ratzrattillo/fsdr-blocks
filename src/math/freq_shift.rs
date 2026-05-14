@@ -1,7 +1,7 @@
 use futuresdr::blocks::signal_source::FixedPointPhase;
 use futuresdr::blocks::signal_source::NCO;
 use futuresdr::num_complex::Complex32;
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 /// This blocks shift the signal in the frequency domain based on the [`NCO`] implementation.
 /// Currently implemented only for float and [`Complex32`]

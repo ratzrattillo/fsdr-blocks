@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::path::PathBuf;
 
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 use sigmf::Annotation;
 use sigmf::{DatasetFormat, DescriptionBuilder};

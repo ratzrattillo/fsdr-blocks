@@ -1,9 +1,9 @@
 use fsdr_blocks::channel::CrossbeamSink;
 use futuresdr::blocks::VectorSource;
-use futuresdr::macros::connect;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Result;
 use futuresdr::runtime::Runtime;
+use futuresdr::runtime::macros::connect;
 
 #[test]
 fn crossbeam_sink_f32() -> Result<()> {

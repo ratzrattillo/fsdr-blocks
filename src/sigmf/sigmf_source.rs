@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use futuresdr::futures::AsyncRead;
 use futuresdr::futures::AsyncReadExt;
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 use sigmf::RecordingBuilder;
 use sigmf::{Annotation, Description};

@@ -20,7 +20,7 @@ members = [
 ]
 
 [dependencies]
-futuresdr = { git = "https://github.com/FutureSDR/FutureSDR", branch = "main", version = "0.0.40-dev"}
+futuresdr = { version = "0.0.40" }
 async-channel = { version = "2.5", optional = true }
 crossbeam-channel = { version = "0.5", optional = true }
 bimap = { version = "0.6", optional = true }

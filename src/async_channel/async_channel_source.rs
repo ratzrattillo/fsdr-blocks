@@ -1,5 +1,5 @@
 use async_channel::Receiver;
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 /// Push samples through a channel into a stream connection.
 ///

@@ -1,5 +1,5 @@
 use async_channel::Sender;
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 /// Push samples originating from a stream in a flowgraph into an async channel.
 ///

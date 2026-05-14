@@ -1,5 +1,5 @@
 use crossbeam_channel::Receiver;
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 /// Pull samples from a crossbeam channel into a stream in a flowgraph.
 ///

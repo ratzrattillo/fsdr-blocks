@@ -1,4 +1,4 @@
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 /// This blocks deinterleave a unique stream into two separate stream.
 /// Typically used to deinterleave iq stream into of stream for `i` and one for `q`.
