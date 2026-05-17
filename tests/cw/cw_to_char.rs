@@ -1,10 +1,9 @@
 use fsdr_blocks::cw::cw_to_char::CWToCharBuilder;
 use fsdr_blocks::cw::shared::{CWAlphabet, msg_to_cw};
-use futuresdr::async_io::block_on;
 use futuresdr::blocks::{ChannelSource, VectorSink, VectorSource};
-use futuresdr::futures::SinkExt;
-use futuresdr::macros::connect;
 use futuresdr::runtime::Result;
+use futuresdr::runtime::channel::mpsc;
+use futuresdr::runtime::macros::connect;
 use futuresdr::runtime::{Flowgraph, Runtime};
 
 // cargo test --features="cw"
@@ -26,10 +25,10 @@ fn test_cw_to_char_vector() -> Result<()> {
         cw_to_char > vector_snk;
     );
 
-    Runtime::new().run(fg)?;
+    let fg = Runtime::new().run(fg)?;
 
-    let snk = vector_snk.get()?;
-    let received: Vec<char> = snk
+    let binding = vector_snk.get(&fg)?;
+    let received: Vec<char> = binding
         .items()
         .iter()
         .map(|&c| char::from_u32(c).unwrap_or('_'))
@@ -50,7 +49,7 @@ fn test_cw_to_char_vector() -> Result<()> {
 fn test_cw_to_char_channel() -> Result<()> {
     let mut fg = Flowgraph::new();
 
-    let (mut tx, rx) = futuresdr::futures::channel::mpsc::channel::<Box<[CWAlphabet]>>(10);
+    let (tx, rx) = mpsc::channel::<Box<[CWAlphabet]>>(10);
 
     let channel_src = ChannelSource::<CWAlphabet>::new(rx);
     let cw_to_char = CWToCharBuilder::new().build();
@@ -61,8 +60,9 @@ fn test_cw_to_char_channel() -> Result<()> {
     );
 
     let rt = Runtime::new();
-    let _fg = block_on(async move {
-        let (fg, _) = rt.start(fg).await.unwrap();
+    let running = rt.start(fg)?;
+
+    Runtime::block_on(async move {
         let c = msg_to_cw(['S'].as_slice()).into_boxed_slice();
         tx.send(c).await.unwrap();
         let c = msg_to_cw([' '].as_slice()).into_boxed_slice();
@@ -76,11 +76,12 @@ fn test_cw_to_char_channel() -> Result<()> {
         let c = msg_to_cw(['S'].as_slice()).into_boxed_slice();
         tx.send(c).await.unwrap();
         tx.close().await.unwrap();
-        fg.await // as Result<Flowgraph>
-    })?;
+    });
 
-    let snk = vector_snk.get()?;
-    let received: Vec<char> = snk
+    let fg = running.wait()?;
+
+    let binding = vector_snk.get(&fg)?;
+    let received: Vec<char> = binding
         .items()
         .iter()
         .map(|&c| char::from_u32(c).unwrap_or('_'))

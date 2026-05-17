@@ -3,11 +3,11 @@ use fsdr_blocks::sigmf::SigMFSourceBuilder;
 use futuresdr::blocks::VectorSink;
 use futuresdr::futures::io::BufReader;
 use futuresdr::futures::io::Cursor;
-use futuresdr::macros::connect;
 use futuresdr::num_complex::Complex;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Result;
 use futuresdr::runtime::Runtime;
+use futuresdr::runtime::macros::connect;
 use sigmf::DatasetFormat;
 use sigmf::DescriptionBuilder;
 
@@ -36,10 +36,10 @@ where
         src > snk;
     );
 
-    Runtime::new().run(fg)?;
+    let fg = Runtime::new().run(fg)?;
 
-    let snk = snk.get()?;
-    Ok(snk.items().clone())
+    let binding = snk.get(&fg)?;
+    Ok(binding.items().clone())
 }
 
 #[test]

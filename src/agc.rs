@@ -1,5 +1,5 @@
 use futuresdr::num_complex::ComplexFloat;
-use futuresdr::prelude::*;
+use futuresdr::runtime::dev::prelude::*;
 
 /// Automatic Gain Control Block
 #[derive(Block)]

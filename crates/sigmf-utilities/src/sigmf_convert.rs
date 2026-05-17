@@ -6,10 +6,10 @@ use fsdr_blocks::sigmf::{SigMFSinkBuilder, SigMFSourceBuilder};
 use fsdr_blocks::type_converters::TypeConvertersBuilder;
 use futuresdr::blocks::Apply;
 use futuresdr::blocks::TagDebug;
-use futuresdr::macros::connect;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Result;
 use futuresdr::runtime::Runtime;
+use futuresdr::runtime::macros::connect;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -28,7 +28,7 @@ impl Cli {
         let mut fg = Flowgraph::new();
 
         let mut src_builder = SigMFSourceBuilder::from(&self.input);
-        let src = fg.add_block(src_builder.build::<f32>().await?);
+        let src = fg.add(src_builder.build::<f32>().await?);
 
         let snk = SigMFSinkBuilder::from(self.output);
 
@@ -36,32 +36,27 @@ impl Cli {
             RI8 => {
                 let conv = TypeConvertersBuilder::lossy_scale_convert_f32_i8().build();
                 let snk = snk.datatype(self.target).build::<i8>().await?;
-                let src_ref = src.clone();
-                connect!(fg, src_ref > conv > snk);
+                connect!(fg, src > conv > snk);
             }
             RU8 => {
                 let conv = TypeConvertersBuilder::lossy_scale_convert_f32_u8().build();
                 let snk = snk.datatype(self.target).build::<u8>().await?;
-                let src_ref = src.clone();
-                connect!(fg, src_ref > conv > snk);
+                connect!(fg, src > conv > snk);
             }
             Rf32Be | Rf32Le => {
                 let conv: Apply<fn(&f32) -> f32, f32, f32> = Apply::new(|x: &f32| *x);
                 let snk = snk.datatype(self.target).build::<f32>().await?;
-                let src_ref = src.clone();
-                connect!(fg, src_ref > conv > snk);
+                connect!(fg, src > conv > snk);
             }
             Rf64Be | Rf64Le => {
                 let conv = TypeConvertersBuilder::convert::<f32, f64>().build();
                 let snk = snk.datatype(self.target).build::<f64>().await?;
-                let src_ref = src.clone();
-                connect!(fg, src_ref > conv > snk);
+                connect!(fg, src > conv > snk);
             }
             Ri16Be | Ri16Le => {
                 let conv = TypeConvertersBuilder::lossy_scale_convert_f32_i16().build();
                 let snk = snk.datatype(self.target).build::<i16>().await?;
-                let src_ref = src.clone();
-                connect!(fg, src_ref > conv > snk);
+                connect!(fg, src > conv > snk);
             }
             _ => return Err(anyhow!("Unsupported target type: {}", self.target)),
         };
